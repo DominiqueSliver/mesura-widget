@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitycal Size Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Widget container */
+        .fitycal-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* Chat bubble trigger */
+        .fitycal-bubble {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: white;
+            font-size: 24px;
+            border: none;
+            position: relative;
+        }
+
+        .fitycal-bubble:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .fitycal-bubble.minimized {
+            transform: scale(0.9);
+        }
+
+        /* Bubble tooltip */
+        .bubble-tooltip {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .fitycal-bubble:hover .bubble-tooltip {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Chat window */
+        .fitycal-chat {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            width: 380px;
+            max-height: 520px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            transform: scale(0) translateY(20px);
+            transform-origin: bottom right;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .fitycal-chat.active {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        /* Chat header */
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .chat-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+
+        .chat-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-close:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Chat content */
+        .chat-content {
+            padding: 25px;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+
+        /* Upload section */
+        .upload-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 25px 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-area.dragover {
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .upload-text {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .upload-subtext {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* Results section */
+        .results-section {
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .size-recommendation {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .recommended-size {
+            font-size: 36px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .confidence-score {
+            color: #28a745;
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .size-description {
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* Fit details */
+        .fit-details {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .fit-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .fit-label {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .fit-value {
+            color: #667eea;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        /* Size tabs */
+        .size-tabs {
+            display: flex;
+            background: #f1f3f4;
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 15px;
+        }
+
+        .size-tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .size-tab.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 30px;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            margin: 0 auto 15px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            font-size: 13px;
+            color: #666;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error state */
+        .error {
+            background: #ffe6e6;
+            color: #d63384;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        /* Success animation */
+        .success-check {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #28a745;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            animation: checkmark 0.6s ease-in-out;
+        }
+
+        @keyframes checkmark {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Notification badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            background: #ff4757;
+            border-radius: 50%;
+            color: white;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            transform: scale(0);
+            transition: transform 0.3s ease;
+        }
+
+        .notification-badge.show {
+            transform: scale(1);
+            animation: bounce 0.6s ease;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% { transform: scale(1); }
+            40%, 43% { transform: scale(1.2); }
+            70% { transform: scale(1.1); }
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .fitycal-chat {
+                width: 350px;
+                max-height: 480px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .fitycal-widget {
+                bottom: 15px;
+                right: 15px;
+            }
+            
+            .fitycal-bubble {
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+            
+            .fitycal-chat {
+                width: calc(100vw - 30px);
+                right: -10px;
+                bottom: 70px;
+            }
+            
+            .chat-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Chat bubble widget -->
+    <div class="fitycal-widget" id="fitycalWidget">
+        <!-- Main bubble -->
+        <button class="fitycal-bubble" id="fitycalBubble" onclick="toggleFitycalWidget()">
+            📏
+            <div class="bubble-tooltip">Find your perfect size</div>
+            <div class="notification-badge" id="notificationBadge">!</div>
+        </button>
+
+        <!-- Chat window -->
+        <div class="fitycal-chat" id="fitycalChat">
+            <!-- Header -->
+            <div class="chat-header">
+                <div>
+                    <div class="chat-title">Perfect Size Finder</div>
+                    <div class="chat-subtitle">Upload your Fitycal scan</div>
+                </div>
+                <button class="chat-close" onclick="closeFitycalWidget()">&times;</button>
+            </div>
+
+            <!-- Content -->
+            <div class="chat-content">
+                <!-- Upload Section -->
+                <div class="upload-section" id="uploadSection">
+                    <div class="upload-area" id="uploadArea" onclick="document.getElementById('pdfFile').click()">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">Upload your scan report</div>
+                        <div class="upload-subtext">PDF from Fitycal app</div>
+                    </div>
+                    <input type="file" id="pdfFile" class="file-input" accept=".pdf" onchange="handleFileUpload(event)">
+                </div>
+
+                <!-- Loading Section -->
+                <div class="loading" id="loadingSection" style="display: none;">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Analyzing your measurements...</div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="results-section" id="resultsSection">
+                    <!-- Success indicator -->
+                    <div class="success-check">✓</div>
+                    
+                    <!-- Main size recommendation -->
+                    <div class="size-recommendation">
+                        <div class="recommended-size" id="recommendedSize">M</div>
+                        <div class="confidence-score" id="confidenceScore">Confidence: 95%</div>
+                        <div class="size-description" id="sizeDescription">Perfect fit for you</div>
+                    </div>
+
+                    <!-- Size comparison tabs -->
+                    <div class="size-tabs">
+                        <div class="size-tab" onclick="selectSizeTab('tight')">Tight</div>
+                        <div class="size-tab active" onclick="selectSizeTab('perfect')">Perfect</div>
+                        <div class="size-tab" onclick="selectSizeTab('loose')">Loose</div>
+                    </div>
+
+                    <!-- Fit details -->
+                    <div class="fit-details">
+                        <div class="fit-row">
+                            <span class="fit-label">Chest</span>
+                            <span class="fit-value" id="chestFit">Perfectly snug</span>
+                        </div>
+                        <div class="fit-row">
+                            <span class="fit-label">Waist</span>
+                            <span class="fit-value" id="waistFit">Comfortably loose</span>
+                        </div>
+                        <div class="fit-row">
+                            <span class="fit-label">Length</span>
+                            <span class="fit-value" id="lengthFit">Normal</span>
+                        </div>
+                        <div class="fit-row">
+                            <span class="fit-label">Hip</span>
+                            <span class="fit-value" id="hipFit">Perfect match</span>
+                        </div>
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="resetWidget()">New Scan</button>
+                        <button class="btn btn-primary" onclick="addToCart()">Add Size</button>
+                    </div>
+                </div>
+
+                <!-- Error Section -->
+                <div id="errorSection" style="display: none;">
+                    <div class="error" id="errorMessage"></div>
+                    <button class="btn btn-secondary" onclick="resetWidget()" style="width: 100%;">Try Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load PDF.js for real PDF processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <script>
+        // Initialize PDF.js
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // Configuration
+        const FITYCAL_CONFIG = {
+            // Partner configuration - set by partner website
+            partnerId: window.FITYCAL_PARTNER_ID || 'demo',
+            productSelector: window.FITYCAL_PRODUCT_SELECTOR || null,
+            apiEndpoint: window.FITYCAL_API_ENDPOINT || null,
+            customColors: window.FITYCAL_COLORS || null,
+            
+            // Default size charts - can be overridden per product
+            defaultSizeChart: {
+                'XS': { chest: [30, 32], waist: [24, 26], hip: [32, 34] },
+                'S': { chest: [32, 34], waist: [26, 28], hip: [34, 36] },
+                'M': { chest: [34, 36], waist: [28, 30], hip: [36, 38] },
+                'L': { chest: [36, 38], waist: [30, 32], hip: [38, 40] },
+                'XL': { chest: [38, 40], waist: [32, 34], hip: [40, 42] },
+                'XXL': { chest: [40, 42], waist: [34, 36], hip: [42, 44] }
+            }
+        };
+
+        // Global variables
+        let userMeasurements = null;
+        let currentFitType = 'perfect';
+        let isWidgetOpen = false;
+        let currentProductInfo = null;
+
+        // Initialize widget
+        function initializeFitycalWidget() {
+            // Auto-detect product information from page
+            currentProductInfo = detectProductInfo();
+            
+            // Apply custom colors if provided
+            if (FITYCAL_CONFIG.customColors) {
+                applyCustomColors(FITYCAL_CONFIG.customColors);
+            }
+            
+            // Show notification badge after delay
+            setTimeout(() => {
+                showNotificationBadge();
+            }, 3000);
+        }
+
+        // Product detection from current page
+        function detectProductInfo() {
+            const productInfo = {
+                name: '',
+                brand: '',
+                availableSizes: [],
+                sizeChart: FITYCAL_CONFIG.defaultSizeChart,
+                category: 'general'
+            };
+
+            try {
+                // Try to extract product name
+                const titleSelectors = ['h1', '.product-title', '.product-name', '[data-product-title]'];
+                for (const selector of titleSelectors) {
+                    const element = document.querySelector(selector);
+                    if (element && element.textContent.trim()) {
+                        productInfo.name = element.textContent.trim();
+                        break;
+                    }
+                }
+
+                // Try to extract available sizes
+                const sizeSelectors = [
+                    '.size-option', '.size-selector option', '.size-button', 
+                    '[data-size]', '.variant-option'
+                ];
+                
+                for (const selector of sizeSelectors) {
+                    const elements = document.querySelectorAll(selector);
+                    if (elements.length > 0) {
+                        elements.forEach(el => {
+                            const size = el.textContent.trim().toUpperCase();
+                            if (['XS', 'S', 'M', 'L', 'XL', 'XXL'].includes(size)) {
+                                productInfo.availableSizes.push(size);
+                            }
+                        });
+                        break;
+                    }
+                }
+
+                // Default sizes if none found
+                if (productInfo.availableSizes.length === 0) {
+                    productInfo.availableSizes = ['S', 'M', 'L', 'XL'];
+                }
+
+                // Detect product category for specialized sizing
+                const categories = {
+                    'bra': ['bra', 'sports bra', 'bralette'],
+                    'pants': ['pants', 'jeans', 'leggings', 'trousers'],
+                    'dress': ['dress', 'gown'],
+                    'top': ['shirt', 'top', 'blouse', 't-shirt'],
+                    'activewear': ['activewear', 'workout', 'fitness', 'athletic']
+                };
+
+                const productName = productInfo.name.toLowerCase();
+                for (const [category, keywords] of Object.entries(categories)) {
+                    if (keywords.some(keyword => productName.includes(keyword))) {
+                        productInfo.category = category;
+                        break;
+                    }
+                }
+
+            } catch (error) {
+                console.warn('Fitycal: Could not auto-detect product info:', error);
+            }
+
+            return productInfo;
+        }
+
+        // Widget control functions
+        function toggleFitycalWidget() {
+            if (isWidgetOpen) {
+                closeFitycalWidget();
+            } else {
+                openFitycalWidget();
+            }
+        }
+
+        function openFitycalWidget() {
+            document.getElementById('fitycalChat').classList.add('active');
+            document.getElementById('fitycalBubble').classList.add('minimized');
+            hideNotificationBadge();
+            isWidgetOpen = true;
+            
+            // Track widget open event
+            trackEvent('widget_opened');
+        }
+
+        function closeFitycalWidget() {
+            document.getElementById('fitycalChat').classList.remove('active');
+            document.getElementById('fitycalBubble').classList.remove('minimized');
+            isWidgetOpen = false;
+            
+            // Track widget close event
+            trackEvent('widget_closed');
+        }
+
+        // Notification functions
+        function showNotificationBadge() {
+            document.getElementById('notificationBadge').classList.add('show');
+        }
+
+        function hideNotificationBadge() {
+            document.getElementById('notificationBadge').classList.remove('show');
+        }
+
+        // File processing with real PDF.js
+        async function processFitycalPDF(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                
+                let extractedText = '';
+                
+                // Extract text from all pages
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    
+                    textContent.items.forEach(item => {
+                        extractedText += item.str + ' ';
+                    });
+                }
+                
+                // Parse measurements from extracted text
+                return parseFitycalMeasurements(extractedText);
+                
+            } catch (error) {
+                console.error('PDF processing error:', error);
+                throw new Error('Unable to process PDF. Please ensure it\'s a valid Fitycal scan report.');
+            }
+        }
+
+        // Parse measurements from PDF text
+        function parseFitycalMeasurements(text) {
+            const measurements = {};
+            
+            // Common measurement patterns in Fitycal PDFs
+            const patterns = {
+                chest: /(?:chest|bust)[\s:]*(\d+\.?\d*)\s*(?:cm|in)/i,
+                waist: /waist[\s:]*(\d+\.?\d*)\s*(?:cm|in)/i,
+                hip: /hip[\s:]*(\d+\.?\d*)\s*(?:cm|in)/i,
+                bodyFat: /(?:body fat|fat)[\s:]*(\d+\.?\d*)\s*%/i,
+                height: /height[\s:]*(\d+\.?\d*)\s*(?:cm|in)/i,
+                weight: /weight[\s:]*(\d+\.?\d*)\s*(?:kg|lbs)/i,
+                
+                // Additional measurements
+                neck: /neck[\s:]*(\d+\.?\d*)\s*(?:cm|in)/i,
+                arm: /(?:arm|bicep)[\s:]*(\d+\.?\d*)\s*(?:cm|in)/i,
+                thigh: /thigh[\s:]*(\d+\.?\d*)\s*(?:cm|in)/i,
+                inseam: /inseam[\s:]*(\d+\.?\d*)\s*(?:cm|in)/i
+            };
+            
+            // Extract measurements using patterns
+            for (const [key, pattern] of Object.entries(patterns)) {
+                const match = text.match(pattern);
+                if (match && match[1]) {
+                    measurements[key] = parseFloat(match[1]);
+                }
+            }
+            
+            // Validate required measurements
+            if (!measurements.chest || !measurements.waist || !measurements.hip) {
+                throw new Error('Required measurements (chest, waist, hip) not found in PDF');
+            }
+            
+            return measurements;
+        }
+
+        // Size calculation algorithm
+        function calculateSizeRecommendation(measurements) {
+            const { chest, waist, hip } = measurements;
+            const sizeChart = currentProductInfo.sizeChart;
+            const availableSizes = currentProductInfo.availableSizes || Object.keys(sizeChart);
+            
+            let bestSize = null;
+            let bestScore = -1;
+            let confidence = 0;
+            
+            // Find best fitting size
+            for (const size of availableSizes) {
+                if (!sizeChart[size]) continue;
+                
+                const sizeData = sizeChart[size];
+                let score = 0;
+                let matches = 0;
+                
+                // Check each measurement
+                if (sizeData.chest && chest >= sizeData.chest[0] && chest <= sizeData.chest[1]) {
+                    score += 3;
+                    matches++;
+                }
+                if (sizeData.waist && waist >= sizeData.waist[0] && waist <= sizeData.waist[1]) {
+                    score += 3;
+                    matches++;
+                }
+                if (sizeData.hip && hip >= sizeData.hip[0] && hip <= sizeData.hip[1]) {
+                    score += 2;
+                    matches++;
+                }
+                
+                // Penalty for measurements outside range
+                if (sizeData.chest && (chest < sizeData.chest[0] || chest > sizeData.chest[1])) {
+                    score -= Math.abs(chest - (sizeData.chest[0] + sizeData.chest[1]) / 2) * 0.1;
+                }
+                if (sizeData.waist && (waist < sizeData.waist[0] || waist > sizeData.waist[1])) {
+                    score -= Math.abs(waist - (sizeData.waist[0] + sizeData.waist[1]) / 2) * 0.1;
+                }
+                if (sizeData.hip && (hip < sizeData.hip[0] || hip > sizeData.hip[1])) {
+                    score -= Math.abs(hip - (sizeData.hip[0] + sizeData.hip[1]) / 2) * 0.1;
+                }
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestSize = size;
+                    confidence = Math.min(95, Math.max(70, (matches / 3) * 95 + Math.max(0, score) * 5));
+                }
+            }
+            
+            // Fallback if no good match
+            if (!bestSize) {
+                bestSize = availableSizes.includes('M') ? 'M' : availableSizes[Math.floor(availableSizes.length / 2)];
+                confidence = 60;
+            }
+            
+            return {
+                size: bestSize,
+                confidence: Math.round(confidence),
+                fitDetails: calculateFitDetails(measurements, bestSize)
+            };
+        }
+
+        function calculateFitDetails(measurements, size) {
+            const { chest, waist, hip } = measurements;
+            const sizeData = currentProductInfo.sizeChart[size];
+            
+            if (!sizeData) {
+                return {
+                    tight: { chest: "Snug fit", waist: "Tight", hip: "Snug", length: "Short" },
+                    perfect: { chest: "Perfect fit", waist: "Comfortable", hip: "Perfect", length: "Normal" },
+                    loose: { chest: "Relaxed fit", waist: "Loose", hip: "Relaxed", length: "Long" }
+                };
+            }
+            
+            // Calculate fit descriptions based on measurements vs size chart
+            const chestFit = chest <= sizeData.chest[0] ? "Tight" : 
+                           chest >= sizeData.chest[1] ? "Loose" : "Perfect";
+            
+            const waistFit = waist <= sizeData.waist[0] ? "Tight" : 
+                           waist >= sizeData.waist[1] ? "Loose" : "Comfortable";
+            
+            const hipFit = hip <= sizeData.hip[0] ? "Snug" : 
+                         hip >= sizeData.hip[1] ? "Relaxed" : "Perfect match";
+            
+            return {
+                tight: {
+                    chest: chestFit === "Perfect" ? "Snug fit" : chestFit,
+                    waist: waistFit === "Comfortable" ? "Tight" : waistFit,
+                    hip: hipFit === "Perfect match" ? "Snug" : hipFit,
+                    length: "Short"
+                },
+                perfect: {
+                    chest: chestFit === "Tight" ? "Perfectly snug" : chestFit === "Loose" ? "Comfortably loose" : "Perfect fit",
+                    waist: waistFit,
+                    hip: hipFit,
+                    length: "Normal"
+                },
+                loose: {
+                    chest: chestFit === "Tight" ? "Relaxed fit" : "Very loose",
+                    waist: waistFit === "Tight" ? "Loose" : "Very loose",
+                    hip: hipFit === "Snug" ? "Relaxed" : "Very loose",
+                    length: "Long"
+                }
+            };
+        }
+
+        // Drag and drop handlers
+        function setupDragAndDrop() {
+            const uploadArea = document.getElementById('uploadArea');
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type === 'application/pdf') {
+                    handleFileUpload({ target: { files: files } });
+                }
+            });
+        }
+
+        // File upload handler
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/pdf') {
+                showError('Please upload a PDF file from your Fitycal scan.');
+                return;
+            }
+
+            showLoading();
+            trackEvent('pdf_upload_started');
+            
+            try {
+                // Process PDF with real PDF.js
+                userMeasurements = await processFitycalPDF(file);
+                const recommendation = calculateSizeRecommendation(userMeasurements);
+                showResults(recommendation);
+                
+                trackEvent('size_recommendation_generated', {
+                    recommended_size: recommendation.size,
+                    confidence: recommendation.confidence
+                });
+                
+            } catch (error) {
+                console.error('PDF processing failed:', error);
+                showError(error.message || 'Unable to read measurements from PDF. Please ensure it\'s a valid Fitycal scan report.');
+                trackEvent('pdf_processing_error', { error: error.message });
+            }
+        }
+
+        // UI state functions
+        function showLoading() {
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('resultsSection').classList.remove('active');
+            document.getElementById('errorSection').style.display = 'none';
+        }
+
+        function showResults(recommendation) {
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('resultsSection').classList.add('active');
+            document.getElementById('errorSection').style.display = 'none';
+
+            document.getElementById('recommendedSize').textContent = recommendation.size;
+            document.getElementById('confidenceScore').textContent = `Confidence: ${recommendation.confidence}%`;
+            document.getElementById('sizeDescription').textContent = 
+                currentProductInfo.name ? `Perfect for ${currentProductInfo.name}` : 'Perfect fit for you';
+            
+            updateFitDetails(recommendation.fitDetails);
+        }
+
+        function showError(message) {
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('resultsSection').classList.remove('active');
+            document.getElementById('errorSection').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        function resetWidget() {
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('resultsSection').classList.remove('active');
+            document.getElementById('errorSection').style.display = 'none';
+            document.getElementById('pdfFile').value = '';
+            userMeasurements = null;
+            currentFitType = 'perfect';
+            
+            // Reset size tabs
+            document.querySelectorAll('.size-tab').forEach((tab, index) => {
+                tab.classList.toggle('active', index === 1); // Perfect fit tab
+            });
+        }
+
+        // Size tab selection
+        function selectSizeTab(fitType) {
+            currentFitType = fitType;
+            
+            document.querySelectorAll('.size-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            if (userMeasurements) {
+                const recommendation = calculateSizeRecommendation(userMeasurements);
+                updateFitDetails(recommendation.fitDetails);
+            }
+        }
+
+        function updateFitDetails(fitDetails) {
+            const details = fitDetails[currentFitType];
+            document.getElementById('chestFit').textContent = details.chest;
+            document.getElementById('waistFit').textContent = details.waist;
+            document.getElementById('hipFit').textContent = details.hip;
+            document.getElementById('lengthFit').textContent = details.length;
+        }
+
+        // Integration functions
+        function addToCart() {
+            const size = document.getElementById('recommendedSize').textContent;
+            
+            trackEvent('add_to_cart_clicked', { recommended_size: size });
+            
+            // Try to integrate with common e-commerce platforms
+            if (tryShopifyIntegration(size)) return;
+            if (tryWooCommerceIntegration(size)) return;
+            if (tryGenericIntegration(size)) return;
+            
+            // Fallback: Show instructions to user
+            alert(`Your recommended size is ${size}!\n\nPlease select size "${size}" and add to cart manually.\n\nThis size recommendation is based on your Fitycal 3D body scan with ${document.getElementById('confidenceScore').textContent.toLowerCase()}.`);
+        }
+
+        // E-commerce platform integrations
+        function tryShopifyIntegration(size) {
+            // Check if Shopify
+            if (typeof Shopify !== 'undefined' || document.querySelector('[data-shopify]')) {
+                try {
+                    // Find size selector and set value
+                    const sizeSelectors = [
+                        `select[name*="Size"] option[value*="${size}"]`,
+                        `input[name*="Size"][value*="${size}"]`,
+                        `.product-form__input option[value*="${size}"]`
+                    ];
+                    
+                    for (const selector of sizeSelectors) {
+                        const element = document.querySelector(selector);
+                        if (element) {
+                            if (element.tagName === 'OPTION') {
+                                element.selected = true;
+                                element.parentElement.dispatchEvent(new Event('change'));
+                            } else {
+                                element.checked = true;
+                                element.dispatchEvent(new Event('change'));
+                            }
+                            
+                            // Try to find and click add to cart button
+                            setTimeout(() => {
+                                const addToCartBtn = document.querySelector('[name="add"], .btn-add-to-cart, .product-form__cart-submit');
+                                if (addToCartBtn) {
+                                    addToCartBtn.click();
+                                }
+                            }, 500);
+                            
+                            closeFitycalWidget();
+                            return true;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Shopify integration failed:', error);
+                }
+            }
+            return false;
+        }
+
+        function tryWooCommerceIntegration(size) {
+            // Check if WooCommerce
+            if (document.querySelector('.woocommerce') || document.querySelector('.single-product')) {
+                try {
+                    const sizeSelect = document.querySelector('select[name="attribute_size"], select[name="attribute_pa_size"]');
+                    if (sizeSelect) {
+                        const option = Array.from(sizeSelect.options).find(opt => 
+                            opt.textContent.trim().toUpperCase() === size
+                        );
+                        if (option) {
+                            option.selected = true;
+                            sizeSelect.dispatchEvent(new Event('change'));
+                            
+                            setTimeout(() => {
+                                const addToCartBtn = document.querySelector('.single_add_to_cart_button');
+                                if (addToCartBtn) {
+                                    addToCartBtn.click();
+                                }
+                            }, 500);
+                            
+                            closeFitycalWidget();
+                            return true;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('WooCommerce integration failed:', error);
+                }
+            }
+            return false;
+        }
+
+        function tryGenericIntegration(size) {
+            try {
+                // Generic size selector patterns
+                const selectors = [
+                    `select option[value="${size}"]`,
+                    `select option[value="${size.toLowerCase()}"]`,
+                    `button[data-size="${size}"]`,
+                    `.size-${size.toLowerCase()}`,
+                    `input[value="${size}"]`
+                ];
+                
+                for (const selector of selectors) {
+                    const element = document.querySelector(selector);
+                    if (element && element.offsetParent !== null) { // visible element
+                        if (element.tagName === 'OPTION') {
+                            element.selected = true;
+                            element.parentElement.dispatchEvent(new Event('change'));
+                        } else if (element.tagName === 'INPUT') {
+                            element.checked = true;
+                            element.dispatchEvent(new Event('change'));
+                        } else {
+                            element.click();
+                        }
+                        
+                        // Try to find add to cart button
+                        setTimeout(() => {
+                            const addToCartSelectors = [
+                                'button[type="submit"]',
+                                '.add-to-cart',
+                                '.btn-add-to-cart',
+                                '#add-to-cart',
+                                '[data-add-to-cart]'
+                            ];
+                            
+                            for (const btnSelector of addToCartSelectors) {
+                                const btn = document.querySelector(btnSelector);
+                                if (btn && btn.offsetParent !== null) {
+                                    btn.click();
+                                    break;
+                                }
+                            }
+                        }, 500);
+                        
+                        closeFitycalWidget();
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.warn('Generic integration failed:', error);
+            }
+            return false;
+        }
+
+        // Analytics and tracking
+        function trackEvent(eventName, properties = {}) {
+            try {
+                const eventData = {
+                    event: eventName,
+                    partner_id: FITYCAL_CONFIG.partnerId,
+                    product_info: currentProductInfo,
+                    timestamp: new Date().toISOString(),
+                    ...properties
+                };
+                
+                // Send to Fitycal analytics if API endpoint configured
+                if (FITYCAL_CONFIG.apiEndpoint) {
+                    fetch(`${FITYCAL_CONFIG.apiEndpoint}/analytics`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(eventData)
+                    }).catch(err => console.warn('Analytics tracking failed:', err));
+                }
+                
+                // Send to Google Analytics if available
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', eventName, {
+                        custom_parameter_1: FITYCAL_CONFIG.partnerId,
+                        custom_parameter_2: eventData.product_info?.name || 'unknown'
+                    });
+                }
+                
+                // Send to Facebook Pixel if available
+                if (typeof fbq !== 'undefined') {
+                    fbq('trackCustom', `Fitycal_${eventName}`, eventData);
+                }
+                
+            } catch (error) {
+                console.warn('Event tracking failed:', error);
+            }
+        }
+
+        // Custom color application
+        function applyCustomColors(colors) {
+            try {
+                const style = document.createElement('style');
+                style.textContent = `
+                    .fitycal-bubble {
+                        background: ${colors.primary} !important;
+                    }
+                    .chat-header {
+                        background: ${colors.primary} !important;
+                    }
+                    .recommended-size {
+                        color: ${colors.primary} !important;
+                    }
+                    .fit-value {
+                        color: ${colors.primary} !important;
+                    }
+                    .size-tab.active {
+                        color: ${colors.primary} !important;
+                    }
+                    .btn-primary {
+                        background: ${colors.primary} !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            } catch (error) {
+                console.warn('Custom color application failed:', error);
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFitycalWidget();
+            setupDragAndDrop();
+        });
+
+        // Close widget when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768 && isWidgetOpen && 
+                !document.getElementById('fitycalWidget').contains(e.target)) {
+                closeFitycalWidget();
+            }
+        });
+
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isWidgetOpen) {
+                closeFitycalWidget();
+            }
+        });
+
+        // Expose public API for partner websites
+        window.FitycalWidget = {
+            open: openFitycalWidget,
+            close: closeFitycalWidget,
+            reset: resetWidget,
+            setProductInfo: (productInfo) => {
+                currentProductInfo = { ...currentProductInfo, ...productInfo };
+            },
+            trackEvent: trackEvent
+        };
+
+        // Auto-show widget for first-time visitors
+        function checkFirstTimeVisitor() {
+            try {
+                const visited = localStorage.getItem('fitycal_visited');
+                if (!visited) {
+                    localStorage.setItem('fitycal_visited', 'true');
+                    // Show extra notification for first time
+                    setTimeout(() => {
+                        showNotificationBadge();
+                        // Add pulse animation for first-time visitors
+                        document.getElementById('fitycalBubble').style.animation = 'pulse 2s infinite';
+                    }, 5000);
+                }
+            } catch (error) {
+                // localStorage not available, continue normally
+            }
+        }
+
+        // Initialize first-time visitor check
+        setTimeout(checkFirstTimeVisitor, 1000);
+
+    </script>
+
+    <!-- Demo Mode Toggle (Remove in production) -->
+    <script>
+        // Demo mode for testing
+        function addDemoMode() {
+            const demoBtn = document.createElement('button');
+            demoBtn.innerHTML = '🎭 Demo Mode';
+            demoBtn.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                background: #28a745;
+                color: white;
+                border: none;
+                border-radius: 25px;
+                padding: 10px 20px;
+                cursor: pointer;
+                font-size: 12px;
+                z-index: 10000;
+                font-family: inherit;
+            `;
+            demoBtn.onclick = () => {
+                if (!isWidgetOpen) openFitycalWidget();
+                
+                // Simulate successful PDF processing
+                setTimeout(() => {
+                    showLoading();
+                    setTimeout(() => {
+                        userMeasurements = {
+                            chest: 36.2,
+                            waist: 28.5,
+                            hip: 38.1,
+                            bodyFat: 22.3,
+                            height: 165,
+                            weight: 58
+                        };
+                        const recommendation = calculateSizeRecommendation(userMeasurements);
+                        showResults(recommendation);
+                    }, 2500);
+                }, 500);
+            };
+            document.body.appendChild(demoBtn);
+        }
+        
+        // Add demo button for testing
+        if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+            setTimeout(addDemoMode, 1000);
+        }
+    </script>
+</body>
+</html>
+            
